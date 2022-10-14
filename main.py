@@ -3,9 +3,9 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import random
 
-# testing push
 
 #---Definitions---#
+
 
 states = ['A', 'B', 'C']
 districts = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
