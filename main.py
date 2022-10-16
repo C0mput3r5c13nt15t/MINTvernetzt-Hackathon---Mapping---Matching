@@ -16,19 +16,25 @@ minTopicDistance = 10
 relatedTopicsTreshold = minTopicDistance + \
     (maxTopicDistance - minTopicDistance) * 0.2
 topicImportance = 0.5
+maxScore = 100 * (1-topicImportance) + (maxTopicDistance) * topicImportance
 
 # Users are a dictionary with stings of numbers as keys and a dictionary of user data as values
 users = {}
 for number in range(30):
     users['u' + str(number)] = {'topic': random.choice(topics),
                                 'district': random.choice(districts),
-                                'max_distance': random.randint(20, 200)}
+                                'max_distance': random.randint(20, 200),
+                                'digital': random.choice([True, False])}
 
 # Projects are a dictionary with stings of numbers as keys and a dictionary of the project data as values
 projects = {}
 for number in range(30):
     projects['p' + str(number)] = {'topic': random.choice(topics),
-                                   'district': random.choice(districts)}
+                                   'district': random.choice(districts),
+                                   'digital': False}
+    if random.randint(0, 10) < 3:
+        projects['p' + str(number)]['district'] = None
+        projects['p' + str(number)]['digital'] = True
 
 
 #---Graph of the states, districts and users---#
@@ -53,10 +59,15 @@ for index in users.keys():
     G.add_node(index)
     G.add_edge(index, users[index]['district'], weight=15)
 
+G.add_node('digital')
+
 # Add projects to the graph
 for index in projects.keys():
     G.add_node(index)
-    G.add_edge(index, projects[index]['district'], weight=15)
+    if not projects[index]['digital']:
+        G.add_edge(index, projects[index]['district'], weight=15)
+    else:
+        G.add_edge(index, 'digital', weight=15)
 
 # Draw the graph
 plt.figure(1)
@@ -101,18 +112,31 @@ edge_labels_topics = nx.get_edge_attributes(G_topics, "weight")
 nx.draw_networkx_edge_labels(
     G_topics, pos_topics, edge_labels_topics, font_size=6)
 
+
 #---Find matches---#
 
 
 def getMatchScore(user, project, G):
-    # Checks if two users match based on their topic and distance
-    shortestPathLength = nx.dijkstra_path_length(
-        G, user['district'], project['district'])
+    # Checks the distance between the user and the project
+    if not project['digital']:
+        shortestPathLength = nx.dijkstra_path_length(
+            G, user['district'], project['district'])
+    else:
+        shortestPathLength = 0
+
+    # Calculates how far appart two topics are
     topicPathLength = nx.dijkstra_path_length(
         G_topics, user['topic'], project['topic'])
+
+    # Makes sure that the topics are related
     if topicPathLength > relatedTopicsTreshold:
         return 0
-    return max((user['max_distance'] - shortestPathLength) * (1-topicImportance) + (maxTopicDistance - topicPathLength) * topicImportance, 0)
+
+    # Check if the user accepts digital projects and if the project is digital
+    if not user['digital'] and project['digital']:
+        return 0
+
+    return max((min((user['max_distance'] - shortestPathLength), maxTopicDistance) * (1-topicImportance) + (maxTopicDistance - topicPathLength) * topicImportance)/maxScore, 0)
 
 
 #---main---#
